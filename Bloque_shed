@@ -1,0 +1,38 @@
+import cadquery as cq
+
+# === Parámetros principales (en milímetros) ===
+lado = 65.0                 # Longitud del cubo
+diametro_hueco = 45.5       # Diámetro exterior del hueco
+espesor_pared = 4.88        # Grosor de pared
+radio_externo = diametro_hueco / 2
+radio_interno = radio_externo - espesor_pared
+
+# === Crear el cubo base ===
+bloque = cq.Workplane("XY").box(lado, lado, lado, centered=True)
+
+# === Crear el hueco con curvatura interna ===
+# Para simular la forma SHED, haremos un blend interno (curvatura)
+hueco = (
+    cq.Workplane("XY")
+    .circle(radio_externo)
+    .circle(radio_interno)
+    .extrude(lado * 1.5, centered=True)
+)
+
+# === Restar huecos en los tres ejes (X, Y, Z) ===
+for eje in ["X", "Y", "Z"]:
+    rot = {
+        "X": ((0, 0, 0), (0, 1, 0), 90),
+        "Y": ((0, 0, 0), (1, 0, 0), 90),
+        "Z": ((0, 0, 0), (0, 0, 1), 0),
+    }
+    bloque = bloque.cut(hueco.rotate(*rot[eje]))
+
+# === Redondear esquinas para suavizar el modelo ===
+bloque = bloque.edges("|Z or |Y or |X").fillet(1.0)
+
+# === Exportar el modelo ===
+cq.exporters.export(bloque, "bloque_SHED_65mm.step")
+cq.exporters.export(bloque, "bloque_SHED_65mm.stl")
+
+show_object(bloque)
